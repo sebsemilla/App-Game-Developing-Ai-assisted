@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gamefy - Editor de Escenarios</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Importamos Three.js desde un CDN (sin necesidad de instalar nada aún) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="btn-rect">📐 Rectángulo</button>
+        <button id="btn-circle">⭕ Círculo</button>
+        <button id="btn-select">🖱️ Mover/Seleccionar</button>
+        <button id="btn-clear">🗑️ Limpiar</button>
+        <button id="btn-save">💾 Guardar</button>
+
+        <div class="controls">
+            <label>Color: <input type="color" id="color-picker" value="#ff0000"></label>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <!-- El canvas se genera automáticamente por Three.js, pero lo reservamos aquí -->
+    </div>
+
+    <div id="properties-panel">
+        <h3>Propiedades</h3>
+        <p>Selecciona un objeto para ver sus datos.</p>
+        <div id="obj-info">Ningún objeto seleccionado</div>
+    </div>
+
+    <!-- Cargamos nuestros scripts como módulos -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
