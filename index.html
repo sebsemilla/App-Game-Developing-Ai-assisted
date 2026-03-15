@@ -18,16 +18,49 @@
 
 <body>
     <div id="toolbar">
-        <button id="btn-rect">📐 Rectángulo</button>
-        <button id="btn-circle">⭕ Círculo</button>
-        <button id="btn-select">🖱️ Mover/Seleccionar</button>
-        <button id="btn-clear">🗑️ Limpiar</button>
-        <button id="btn-save">💾 Guardar</button>
+        <div class="tool-group">
+            <h4>Modo</h4>
+            <select id="drawing-mode">
+                <option value="2d">2D (Plano)</option>
+                <option value="3d">3D (Volumen)</option>
+            </select>
+        </div>
+        
+        <div class="tool-group">
+            <h4>Herramientas 2D</h4>
+            <button id="btn-rect2d">📐 Rectángulo (2D)</button>
+            <button id="btn-circle2d">⭕ Círculo (2D)</button>
+            <button id="btn-line">📏 Línea</button>
+            <button id="btn-freehand">✏️ Mano alzada</button>
+        </div>
+
+        <div class="tool-group">
+            <h4>Herramientas 3D</h4>
+            <button id="btn-cube">🧊 Cubo</button>
+            <button id="btn-sphere">⚪ Esfera</button>
+            <button id="btn-cylinder">🥫 Cilindro</button>
+        </div>
 
         <div class="controls">
             <label>Color: <input type="color" id="color-picker" value="#ff0000"></label>
         </div>
+
+        <div class="tool-group">
+            <h4>Edición</h4>
+            <button id="btn-select">🖱️ Seleccionar</button>
+            <button id="btn-undo">↩️ Deshacer</button>
+            <button id="btn-redo">↪️ Rehacer</button>
+            <button id="btn-clear">🗑️ Limpiar</button>
+            <button id="btn-save">💾 Guardar</button>
+        </div>
+
+        <div class="tool-group">
+            <h4>Grid</h4>
+            <button id="btn-grid-config">📏 Configurar Grid</button>
+        </div>
+
     </div>
+
 
     <div id="canvas-container">
         <!-- El canvas se genera automáticamente por Three.js, pero lo reservamos aquí -->
@@ -36,7 +69,7 @@
     <div id="properties-panel">
         <h3>Propiedades</h3>
         <p>Selecciona un objeto para ver sus datos.</p>
-        <div id="obj-info">Ningún objeto seleccionado</div>
+        <div id="obj-info">Area de edicion fina</div>
     </div>
 
     <!-- Cargamos nuestros scripts como módulos -->

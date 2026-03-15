@@ -5,18 +5,51 @@ body {
 }
 
 #toolbar {
-    background: #2c3e50;
-    color: white;
-    padding: 10px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(51, 37, 119, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 90vh;
+    overflow-y: auto;
 }
+
+.tool-group {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #81778b;
+    border-radius: 4px;
+}
+
+.tool-group h4 {
+    margin: 0 0 10px 0;
+    color: #e9c5c5;
+    font-size: 14px;
+}
+
+.tool-group button {
+    margin: 2px;
+    padding: 8px 12px;
+    border: 1px solid #554df0;
+    background: rgb(102, 69, 69);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.tool-group button:hover {
+    background: #378660;
+}
+
+.tool-group button.active {
+    background: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
 
 button {
     padding: 8px 12px;
@@ -38,16 +71,41 @@ button:hover {
 }
 
 #properties-panel {
-    position: absolute;
-    right: 0;
-    top: 50px;
-    width: 250px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
     background: white;
     padding: 15px;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-    height: calc(100% - 50px);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    max-width: 300px;
+    z-index: 1000;
+}
+
+.grid-config-panel {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    min-width: 250px;
+}
+
+.grid-config-panel h4 {
+    margin: 0 0 10px 0;
+}
+
+.grid-config-panel label {
+    display: block;
+    margin: 10px 0;
 }
 
 .controls {
-    margin-left: auto;
+    margin-top: 15px;
+    padding: 10px;
+    background: #947fbe;
+    border-radius: 4px;
 }
