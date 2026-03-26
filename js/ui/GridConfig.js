@@ -1,89 +1,122 @@
 // js/ui/GridConfig.js
-import * as THREE from 'three';
+import * as THREE from "three";
+
 export class GridConfig {
-    constructor(editor) {
-        console.log('📦 GridConfig constructor - Iniciando');
-        this.editor = editor;
-        this.visible = true;
-        this.size = 50;
-        this.divisions = 50;
-        this.cellSize = 1;
-        this.snapEnabled = true;
-        console.log('✅ GridConfig inicializado');
-    }
+  constructor(editor) {
+    this.editor = editor;
+    this.panel = null;
+    this.visible = false;
+    this.size = 50;
+    this.divisions = 50;
+    this.cellSize = 1;
+    this.snapEnabled = true;
+    this.init();
+  }
 
-    snapToGrid(point) {
-        if (!this.snapEnabled) return point;
+  init() {
+    this.panel = document.createElement("div");
+    this.panel.className = "grid-config-panel";
+    this.panel.style.display = "none";
+    this.panel.innerHTML = this.getHTML();
+    document.body.appendChild(this.panel);
+    this.attachEventListeners();
+    this.positionPanel();
+    window.addEventListener("resize", () => this.positionPanel());
+  }
 
-        // Asegurar que point es un THREE.Vector3
-        if (!(point instanceof THREE.Vector3)) {
-            console.warn('snapToGrid: point no es Vector3', point);
-            return point;
-        }
-
-        // Crear un nuevo Vector3 con las coordenadas ajustadas
-        return new THREE.Vector3(
-            Math.round(point.x / this.cellSize) * this.cellSize,
-            point.y,
-            Math.round(point.z / this.cellSize) * this.cellSize
-        );
-    }
-
-    createUI() {
-        console.log('Creando UI del Grid');
-        const panel = document.createElement('div');
-        panel.className = 'grid-config-panel';
-        panel.innerHTML = `
+  getHTML() {
+    return `
             <h4>Configuración del Grid</h4>
+            <label>
+                Tamaño de celda: <input type="number" id="grid-cellsize" value="${this.cellSize}" step="0.1">
+            </label>
+            <label>
+                Tamaño: <input type="range" id="grid-size" min="10" max="100" value="${this.size}">
+                <span>${this.size}</span>
+            </label>
+            <label>
+                Divisiones: <input type="range" id="grid-divisions" min="10" max="100" value="${this.divisions}">
+                <span>${this.divisions}</span>
+            </label>
+            <label>
+                <input type="checkbox" id="grid-lock" ${this.snapEnabled ? "checked" : ""}> 🔒 Ajustar al Grid
+            </label>
             <label>
                 <input type="checkbox" id="grid-visible" checked> Visible
             </label>
-            <label>
-                Tamaño: <input type="range" id="grid-size" min="10" max="100" value="50">
-            </label>
-            <label>
-                Divisiones: <input type="range" id="grid-divisions" min="10" max="100" value="50">
-            </label>
-            <label>
-                <input type="checkbox" id="grid-snap" checked> Snap a grid
-            </label>
-            <label>
-                Tamaño de celda: <input type="number" id="grid-cellsize" value="1" step="0.1">
-            </label>
         `;
+  }
 
-        // Event listeners del panel
-        panel.querySelector('#grid-visible').addEventListener('change', (e) => {
-            this.visible = e.target.checked;
-            if (this.editor && this.editor.grid) {
-                this.editor.grid.visible = this.visible;
-            }
-        });
+  attachEventListeners() {
+    const lockCheckbox = this.panel.querySelector("#grid-lock");
+    lockCheckbox.addEventListener("change", (e) => {
+      this.snapEnabled = e.target.checked;
+    });
 
-        panel.querySelector('#grid-size').addEventListener('input', (e) => {
-            this.size = parseInt(e.target.value);
-            if (this.editor && this.editor.createGrid) {
-                this.editor.createGrid(this.size, this.divisions, 0x888888, 0xdddddd);
-            }
-        });
+    const visibleCheckbox = this.panel.querySelector("#grid-visible");
+    visibleCheckbox.addEventListener("change", (e) => {
+      if (this.editor && this.editor.grid) {
+        this.editor.grid.visible = e.target.checked;
+      }
+    });
 
-        panel.querySelector('#grid-divisions').addEventListener('input', (e) => {
-            this.divisions = parseInt(e.target.value);
-            if (this.editor && this.editor.createGrid) {
-                this.editor.createGrid(this.size, this.divisions, 0x888888, 0xdddddd);
-            }
-        });
+    const sizeInput = this.panel.querySelector("#grid-size");
+    const sizeSpan = this.panel.querySelector("#grid-size + span");
+    sizeInput.addEventListener("input", (e) => {
+      this.size = parseInt(e.target.value);
+      if (sizeSpan) sizeSpan.textContent = this.size;
+      if (this.editor && this.editor.createGrid) {
+        this.editor.createGrid(this.size, this.divisions, 0x888888, 0xdddddd);
+      }
+    });
 
-        panel.querySelector('#grid-snap').addEventListener('change', (e) => {
-            this.snapEnabled = e.target.checked;
-            console.log('Snap:', this.snapEnabled ? 'activado' : 'desactivado');
-        });
+    const divisionsInput = this.panel.querySelector("#grid-divisions");
+    const divisionsSpan = this.panel.querySelector("#grid-divisions + span");
+    divisionsInput.addEventListener("input", (e) => {
+      this.divisions = parseInt(e.target.value);
+      if (divisionsSpan) divisionsSpan.textContent = this.divisions;
+      if (this.editor && this.editor.createGrid) {
+        this.editor.createGrid(this.size, this.divisions, 0x888888, 0xdddddd);
+      }
+    });
 
-        panel.querySelector('#grid-cellsize').addEventListener('change', (e) => {
-            this.cellSize = parseFloat(e.target.value);
-            console.log('Cell size:', this.cellSize);
-        });
+    const cellSizeInput = this.panel.querySelector("#grid-cellsize");
+    cellSizeInput.addEventListener("change", (e) => {
+      this.cellSize = parseFloat(e.target.value);
+    });
+  }
 
-        return panel;
-    }
+  snapToGrid(point) {
+    if (!this.snapEnabled) return point.clone();
+    if (!(point instanceof THREE.Vector3)) return point;
+    return new THREE.Vector3(
+      Math.round(point.x / this.cellSize) * this.cellSize,
+      point.y,
+      Math.round(point.z / this.cellSize) * this.cellSize,
+    );
+  }
+
+  positionPanel() {
+    if (!this.panel) return;
+    this.panel.style.left = "50%";
+    this.panel.style.top = "50%";
+    this.panel.style.transform = "translate(-50%, -50%)";
+  }
+
+  show() {
+    if (!this.panel) this.init();
+    this.panel.style.display = "block";
+    this.visible = true;
+    this.positionPanel();
+  }
+
+  hide() {
+    if (this.panel) this.panel.style.display = "none";
+    this.visible = false;
+  }
+
+  toggle() {
+    if (this.visible) this.hide();
+    else this.show();
+  }
 }

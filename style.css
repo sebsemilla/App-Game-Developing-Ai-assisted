@@ -1,27 +1,119 @@
 body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
-    overflow: hidden;
+    overflow: auto;
+}
+
+#canvas-container {
+    position: static;
+    top: 0;
+    /* Mismo ancho que la toolbar */
+    left: 100px;
+    width: calc(100% - 100px);
+    height: 100vh;
+    background: #ecf0f1;
+}
+
+/* Menú superior centrado y semitransparente */
+.menu-container {
+    position: fixed;
+    top: 10px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    /* Permite que el mouse pase a través del contenedor, pero los hijos pueden recibir eventos */
+    z-index: 2000;
+}
+
+.top-menu {
+    display: flex;
+    background: rgba(199, 3, 3, 0.2);
+    /* Muy transparente por defecto */
+    backdrop-filter: blur(20px);
+    border-radius: 30px;
+    padding: 5px 10px;
+    box-shadow: 0 4px 15px rgba(54, 57, 215, 0.3);
+    pointer-events: auto;
+    /* El menú en sí puede recibir eventos */
+    opacity: 0.5;
+    transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+.menu-container:hover .top-menu {
+    opacity: 1;
+    background: rgba(11, 21, 127, 0.8);
+    /* Se oscurece al hacer hover */
+}
+
+.menu-item {
+    position: relative;
+    padding: 8px 15px;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    cursor: default;
+    border-radius: 20px;
+    transition: background 0.2s;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: rgba(40, 40, 40, 0.9);
+    backdrop-filter: blur(5px);
+    border-radius: 8px;
+    padding: 5px 0;
+    min-width: 150px;
+    display: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.menu-item:hover .submenu {
+    display: block;
+}
+
+.submenu-item {
+    padding: 8px 15px;
+    color: #eee;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.submenu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 #toolbar {
     position: fixed;
     top: 10px;
-    left: 10px;
-    background: rgba(51, 37, 119, 0.9);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    max-height: 90vh;
+    left: 3px;
+    width: 100px;
+    background: #1f2342;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 2px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+    z-index: 900;
+    height: 500px;
     overflow-y: auto;
 }
 
 .tool-group {
-    margin-bottom: 15px;
-    padding: 10px;
+    margin-bottom: 5px;
+    display: block;
+    padding: 5px;
     border: 1px solid #81778b;
     border-radius: 4px;
+    background-color: #1f2342;
 }
 
 .tool-group h4 {
@@ -31,13 +123,15 @@ body {
 }
 
 .tool-group button {
-    margin: 2px;
+    margin: 5px 0;
+    width: 100%;
     padding: 8px 12px;
-    border: 1px solid #554df0;
-    background: rgb(102, 69, 69);
+    border: 1px solid #1d1c29;
+    background-color: #34495e;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 1px;
     transition: all 0.3s;
+    display: block;
 }
 
 .tool-group button:hover {
@@ -50,9 +144,105 @@ body {
     border-color: #45a049;
 }
 
+/* Panel de herramientas 2D */
+.tools-2d-panel {
+    position: fixed;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    min-width: 180px;
+    max-width: 200px;
+    font-family: Arial, sans-serif;
+}
+
+.tools-2d-panel .panel-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 5px;
+    text-align: center;
+}
+
+.tools-2d-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tools-2d-panel .tool-btn {
+    background: #34495e;
+    color: white;
+    border: 1px solid #4a6782;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+}
+
+.tools-2d-panel .tool-btn:hover {
+    background: #3d566e;
+}
+
+.tools-2d-panel .tool-btn.active {
+    background: #4CAF50;
+    border-color: #45a049;
+}
+
+.tools-3d-panel {
+    position: fixed;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    min-width: 180px;
+    max-width: 200px;
+    font-family: Arial, sans-serif;
+}
+
+.tools-3d-panel .panel-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 5px;
+    text-align: center;
+}
+
+.tools-3d-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tools-3d-panel .tool-btn {
+    background: #34495e;
+    color: white;
+    border: 1px solid #4a6782;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+}
+
+.tools-3d-panel .tool-btn:hover {
+    background: #3d566e;
+}
+
+.tools-3d-panel .tool-btn.active {
+    background: #4CAF50;
+    border-color: #45a049;
+}
 
 button {
-    padding: 8px 12px;
+    padding: 20px 20px;
     cursor: pointer;
     border: none;
     border-radius: 4px;
@@ -64,48 +254,643 @@ button:hover {
     background: #1abc9c;
 }
 
-#canvas-container {
-    width: 100vw;
-    height: 100vh;
-    background: #ecf0f1;
+
+/* Contenedor del color picker */
+.controls {
+    display: flex;
+    align-items: center;
+    /* Centra verticalmente el contenido */
+    justify-content: center;
+    /* Centra horizontalmente (opcional, puedes ajustar) */
+    margin-top: 5%;
+    padding: 1px 10px;
+    background: #34495e;
+    /* Color de fondo actual */
+    border-radius: 2px;
+    margin-bottom: 1px;
+    color: white;
+    border: 1px solid #97c8f9;
+    height: 60px;
+    /* Color del texto por defecto */
 }
 
+/* Etiqueta "Color:" */
+.controls label {
+    color: rgb(0, 0, 0);
+    /* Espacio entre label e input */
+    font-size: 14px;
+    /* Ajusta altura de línea */
+}
+
+/* Estilo del input color */
+.controls input[type="color"] {
+    width: 40px;
+    /* Ancho fijo */
+    height: 40px;
+    cursor: pointer;
+    border-color: #2980b9;
+    margin-left: 1px;
+    /* Para que se vea el fondo del contenedor */
+    padding: 1px;
+}
+
+/* Para mejorar la apariencia del color swatch en WebKit (Chrome, Edge) */
+.controls input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+#btn-paint-bucket {
+    background: #34495e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    border-color: #1d1c29;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#btn-paint-bucket:hover {
+    background-color: #0d3a62;
+    /* Un tono más claro al pasar el ratón */
+}
+
+#btn-paint-bucket:active {
+    background-color: #395b7b;
+    /* Más oscuro al hacer clic */
+}
+
+/* ============================================
+   PANEL DE PROPIEDADES
+   ============================================ */
 #properties-panel {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: white;
+    width: 280px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background-color: #1f2342;
+    /* Fondo oscuro elegante */
+    color: #ecf0f1;
+    /* Texto claro */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    z-index: 2000;
+    border: 1px solid #34495e;
+    transition: opacity 0.3s ease;
+}
+
+/* Título del panel */
+#properties-panel h3 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: #968fe2;
+    /* Azul acentuado */
+    border-bottom: 2px solid #908fdd;
+    padding-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Grupo de propiedades (cada bloque) */
+#properties-panel .property-group {
+    background-color: #34495e;
+    /* Un tono más claro que el fondo */
+    border-radius: 6px;
     padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    max-width: 300px;
-    z-index: 1000;
+    margin-bottom: 15px;
+    border: 1px solid #3d566e;
 }
 
-.grid-config-panel {
-    position: fixed;
-    top: 100px;
-    right: 20px;
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    z-index: 1001;
-    min-width: 250px;
+/* Etiquetas de cada campo */
+#properties-panel .property-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #bdc3c7;
 }
 
-.grid-config-panel h4 {
-    margin: 0 0 10px 0;
-}
-
-.grid-config-panel label {
-    display: block;
-    margin: 10px 0;
-}
-
-.controls {
-    margin-top: 15px;
-    padding: 10px;
-    background: #947fbe;
+/* Inputs numéricos */
+#properties-panel .property-group input[type="number"] {
+    width: 100px;
+    padding: 6px 8px;
+    background-color: #ecf0f1;
+    border: 1px solid #7f8c8d;
     border-radius: 4px;
+    color: #2c3e50;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+#properties-panel .property-group input[type="number"]:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
+/* Controles de modo espejo */
+#properties-panel .mirror-controls {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #3498db;
+}
+
+#properties-panel .mirror-controls h4 {
+    margin: 0 0 10px 0;
+    color: #3498db;
+    font-size: 14px;
+}
+
+#properties-panel .mirror-controls label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: #ecf0f1;
+}
+
+#properties-panel .mirror-controls input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+#properties-panel .mirror-controls select {
+    padding: 5px;
+    background-color: #ecf0f1;
+    border: 1px solid #7f8c8d;
+    border-radius: 4px;
+    color: #2c3e50;
+    cursor: pointer;
+}
+
+/* Mensaje de "ningún objeto seleccionado" */
+#properties-panel #obj-info {
+    color: #95a5a6;
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* Scrollbar personalizado (opcional, mejora la experiencia) */
+#properties-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#properties-panel::-webkit-scrollbar-track {
+    background: #34495e;
+    border-radius: 4px;
+}
+
+#properties-panel::-webkit-scrollbar-thumb {
+    background: #3498db;
+    border-radius: 4px;
+}
+
+#properties-panel::-webkit-scrollbar-thumb:hover {
+    background: #2980b9;
+}
+
+
+/* AREA DE PANEL DE TEXTURAS */
+.assets-panel {
+    position: fixed;
+    background: #2c3e50;
+    color: white;
+    border: 1px solid #2d6aa6;
+    border-radius: 5px;
+    padding: 10px;
+    width: 250px;
+    max-height: 50vh;
+    overflow-y: auto;
+    z-index: 1500;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    font-family: Arial, sans-serif;
+    min-width: 250px;
+    overflow-x: hidden;
+}
+
+.assets-header {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #34495e;
+    text-align: center;
+}
+
+.assets-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+.asset-section {
+    margin-bottom: 15px;
+}
+
+.asset-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.asset-section label {
+    display: block;
+    margin: 5px 0;
+    font-size: 13px;
+}
+
+.asset-section input[type="text"] {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.asset-section button {
+    margin-top: 5px;
+    padding: 6px 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.asset-section button:hover {
+    background-color: #45a049;
+}
+
+.asset-section input[type="range"] {
+    width: 70%;
+    vertical-align: middle;
+}
+
+.asset-grid {
+    display: grid;
+    /* grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+
+.asset-item {
+    cursor: pointer;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 2px;
+    background: #34495e;
+    /* transition: background 0.2s; */
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.asset-item:hover {
+    background: #3d566e;
+}
+
+.asset-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.asset-item .placeholder {
+    width: 70px;
+    height: 70px;
+    background: #34495e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+}
+
+.asset-context-menu {
+    position: fixed;
+    background: #2c3e50;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 5px 0;
+    min-width: 150px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 3000;
+    font-family: Arial, sans-serif;
+}
+
+.asset-context-menu .menu-item {
+    padding: 8px 15px;
+    color: #ecf0f1;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.asset-context-menu .menu-item:hover {
+    background: #34495e;
+}
+
+/* Botón "Ver más" */
+.asset-item.more-button {
+    background: #34495e;
+    border: 2px dashed #4a6782;
+    transition: all 0.2s;
+}
+
+.asset-item.more-button:hover {
+    background: #3d566e;
+    border-color: #5d7a9a;
+}
+
+/* Estilos para los encabezados de sección en el panel de propiedades */
+.section-header {
+    cursor: pointer;
+    /* Cambia el cursor a una mano */
+    padding: 8px 10px;
+    /* Espaciado interno para que sea más fácil hacer clic */
+    background-color: #4c5295;
+    /* Color de fondo por defecto */
+    border: 1px solid #ccc;
+    /* Borde sutil */
+    border-radius: 4px;
+    /* Bordes redondeados */
+    margin-bottom: 2px;
+    /* Pequeño espacio entre secciones */
+    transition: background-color 0.2s, border-color 0.2s;
+    /* Transición suave */
+    user-select: none;
+    /* Evita que se seleccione el texto al hacer doble clic */
+}
+
+/* Efecto al pasar el ratón */
+.section-header:hover {
+    background-color: #597ab2;
+    border-color: #999;
+}
+
+/* Efecto al hacer clic (estado presionado) */
+.section-header:active {
+    background-color: #d0d0d0;
+    border-color: #666;
+    transform: scale(0.98);
+    /* Pequeño efecto de hundimiento (opcional) */
+}
+
+/* Para cuando la sección está colapsada (si quieres un estilo diferente) */
+.property-section.collapsed .section-header {
+    /* Puedes añadir estilos específicos si quieres */
+}
+
+/* El triángulo indicador (▶/▼) puede tener su propio estilo si lo deseas */
+.section-toggle {
+    float: right;
+    /* Alinea el triángulo a la derecha */
+    font-size: 12px;
+    color: #3c3737;
+}
+
+/*
+al dejar shift presionado y hacer click sobre objetos hacer que se seleccionen en conjunto. */
+
+
+.lighting-panel {
+    position: relative;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1500;
+    min-width: 250px;
+    max-width: 350px;
+    max-height: 50vh;
+    overflow-y: auto;
+    font-family: Arial, sans-serif;
+    border: 1px solid #2d6aa6;
+}
+
+
+.lighting-panel .panel-header {
+    font-size: 16px;
+    font-weight: bold;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 5px;
+}
+
+.lighting-panel #add-light-btn {
+    width: 100%;
+    padding: 5px;
+    background: #34495e;
+    color: white;
+    border: 1px solid #4a6782;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.lighting-panel .lights-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lighting-panel .light-item {
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.lighting-panel .light-item:hover {
+    filter: brightness(1.2);
+}
+
+.lighting-panel .light-type {
+    font-size: 12px;
+    color: #ccc;
+}
+
+/* Panel de cámara */
+.camera-panel {
+    position: fixed;
+    background: #2c3e50;
+    color: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    min-width: 220px;
+    max-width: 280px;
+    font-family: Arial, sans-serif;
+}
+
+.camera-panel .panel-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 5px;
+    text-align: center;
+}
+
+.camera-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.camera-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.camera-option h4 {
+    margin: 0;
+    font-size: 14px;
+    width: 100%;
+    text-align: left;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+}
+
+.camera-indicator {
+    text-align: center;
+    margin-right: 40%;
+    position: fixed;
+    bottom: 10px;
+    left: 40%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12px;
+    z-index: 1000;
+    transition: background-color 0.2s;
+    user-select: text;
+    /* Permite seleccionar */
+    cursor: text;
+    /* Muestra cursor de texto */
+    white-space: nowrap;
+    /* Evita que el texto se divida en varias líneas */
+}
+
+.camera-indicator::selection {
+    background: #1abc9c;
+    /* Color de fondo cuando se selecciona */
+    color: #000;
+    /* Color del texto seleccionado */
+}
+
+.camera-indicator:hover {
+    background-color: rgba(15, 8, 8, 0.9);
+    cursor: text;
+    /* Aseguramos cursor de texto */
+}
+
+.option-btn {
+    background: #34495e;
+    color: white;
+    border: 1px solid #4a6782;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+    flex: 1;
+    text-align: center;
+}
+
+.option-btn:hover {
+    background: #3d566e;
+}
+
+.option-note {
+    font-size: 10px;
+    color: #aaa;
+    font-style: italic;
+}
+
+.save-btn {
+    background: #2c3e50;
+    color: white;
+    border: 1px solid #4a6782;
+    border-radius: 4px;
+    padding: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin: 5px 0;
+}
+
+.save-btn:hover {
+    background: #1abc9c;
+}
+
+.saved-list {
+    margin-top: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #34495e;
+    padding-top: 5px;
+}
+
+.saved-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    border-bottom: 1px solid #34495e;
+    font-size: 12px;
+}
+
+.saved-item .pos-name {
+    flex: 1;
+    cursor: pointer;
+}
+
+.saved-item .pos-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.saved-item button {
+    background: #34495e;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.saved-item button:hover {
+    background: #1abc9c;
+}
+
+.empty-message {
+    font-size: 12px;
+    color: #aaa;
+    text-align: center;
+    padding: 8px;
 }
