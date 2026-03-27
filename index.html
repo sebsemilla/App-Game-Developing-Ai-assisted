@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gamefy - Editor de Escenarios</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Importamos Three.js desde un CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Menú superior -->
+    <div class="menu-container">
+        <div class="top-menu">
+            <div class="menu-item">Proyecto
+                <div class="submenu">
+                    <div class="submenu-item" data-action="nuevo">Nuevo</div>
+                    <div class="submenu-item" data-action="abrir">Abrir...</div>
+                    <div class="submenu-item" data-action="guardar">Guardar</div>
+                    <div class="submenu-item" data-action="guardarComo">Guardar como...</div>
+                    <div class="submenu-item" data-action="importar">Importar...</div>
+                    <div class="submenu-item" data-action="exportar">Exportar...</div>
+                </div>
+            </div>
+            <div class="menu-item">Edicion
+                <div class="submenu">
+                    <div class="submenu-item" data-action="deshacer">Deshacer</div>
+                    <div class="submenu-item" data-action="rehacer">Rehacer</div>
+                    <div class="submenu-item" data-action="duplicar">Duplicar</div>
+                    <div class="submenu-item" data-action="eliminar">Eliminar</div>
+                </div>
+            </div>
+            <div class="menu-item">Automatizar
+                <div class="submenu">
+                    <div class="submenu-item" data-action="secuencia">Creación de objetos en secuencia</div>
+                    <div class="submenu-item" data-action="coaliciones">Aplicación de coaliciones</div>
+                    <div class="submenu-item" data-action="nodos">Aplicación de nodos jerarquizados</div>
+                </div>
+            </div>
+            <div class="menu-item">Grupos
+                <div class="submenu">
+                    <div class="submenu-item" data-action="crearGrupo">Crear grupo</div>
+                    <div class="submenu-item" data-action="addToGroup">Añadir a grupo</div>
+                    <div class="submenu-item" data-action="quitarGrupo">Quitar de grupo</div>
+                </div>
+            </div>
+            <div class="menu-item">Creacion
+                <div class="submenu">
+                    <div class="submenu-item" data-action="aiCharacter">AI Character Creation</div>
+                    <div class="submenu-item" data-action="landscapes">Paisajes</div>
+                    <div class="submenu-item" data-action="insertText">Insertar texto</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de herramientas lateral -->
+    <div id="toolbar">
+        <div class="tool-group">
+            <h4>Tools</h4>
+        </div>
+
+        <div class="tool-group">
+            <button id="btn-tools-2d">📐2D</button>
+        </div>
+
+        <div class="tool-group">
+            <button id="btn-tools-3d">🧊3D</button>
+        </div>
+
+        <div class="tool-group">
+            <h4>Selección</h4>
+            <button id="btn-select">Select</button>
+            <button id="btn-marquee">🔲 Selección múltiple</button>
+            <button id="btn-info" class="info-btn"
+                title="Presiona Shift para añadir a la selección, Ctrl para alternar">ℹ️</button>
+        </div>
+
+        <div class="tool-group">
+            <h4>Edición</h4>
+            <div class="controls">
+                <label>Color: <input type="color" id="color-picker" value="#ff0000"></label>
+            </div>
+            <button id="btn-paint-bucket">🎨 Cubeta</button>
+            <button id="btn-assets">📦 Assets</button>
+            <button id="btn-lighting">💡 Iluminación</button>
+            <button id="btn-camera">🎥 Cámaras</button>
+        </div>
+
+    </div>
+
+    <!-- Contenedor principal del canvas 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- Panel de propiedades -->
+    <div id="properties-panel">
+        <h3>Propiedades</h3>
+        <p>Selecciona un objeto para ver sus datos.</p>
+        <div id="obj-info">Ningún objeto seleccionado</div>
+    </div>
+
+    <!-- Cargamos nuestros scripts como módulos -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
+
+<!-- Live Server http://127.0.0.1:5500 -->

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gamefy</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="btn-circle">Circulo</button>
+        <button id="btn-rect">Rectangulo</button>
+        <button id="btn-select">Seleccionar</button>
+        <button id="btn-clear">Borrar</button>
+        <button id="btn-save">Salvar</button>
+        <div class="controls"></div>
+        <div id="canvas-container">
+
+        </div>
+        <div id="properties-panel">
+            <h3>Propiedades</h3>
+            <p>Selecciona un objeto para ver sus propiedades</p>
+            <div id="obj-info">Ninguno Seleccionado</div>
+
+        </div>
+        <script type="module" src="js/main2.js"></script>
+    </div>
+
+</body>
+
+</html>

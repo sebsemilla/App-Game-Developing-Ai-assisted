@@ -1,0 +1,10 @@
+cat > .gitignore << 'EOF'
+.vscode/
+node_modules/
+proxy/node_modules/
+.env
+proxy/.env
+proxy/models/
+*.glb
+.DS_Store
+EOF
