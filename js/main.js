@@ -17,6 +17,8 @@ import { CameraPanel } from "./ui/CameraPanel.js";
 import { AICharacterPanel } from "./ui/AICharacterPanel.js";
 import { PanelManager } from "./ui/PanelManager.js";
 import { ExportPanel } from "./ui/ExportPanel.js";
+import { ReferenceImagePanel } from "./ui/ReferenceImagePanel.js";
+import { VectorImportPanel } from "./ui/VectorImportPanel.js";
 import * as THREE from "three";
 
 // ============================================
@@ -74,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const aiCharacterPanel = new AICharacterPanel(editor);
   const exportPanel = new ExportPanel(editor);
+  const referenceImagePanel = new ReferenceImagePanel(editor);
+  const vectorImportPanel = new VectorImportPanel(editor);
 
   inputHandler.assetsPanel = assetsPanel;
 
@@ -239,6 +243,12 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
         case "importar":
           alert("Importar - funcionalidad pendiente");
+          break;
+        case "importarReferencia":
+          referenceImagePanel.show();
+          break;
+        case "importarVector":
+          vectorImportPanel.show();
           break;
         case "exportar":
           exportPanel.show();
