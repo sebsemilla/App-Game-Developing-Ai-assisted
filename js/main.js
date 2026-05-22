@@ -16,6 +16,7 @@ import { Tools3DPanel } from "./ui/Tools3DPanel.js";
 import { CameraPanel } from "./ui/CameraPanel.js";
 import { AICharacterPanel } from "./ui/AICharacterPanel.js";
 import { PanelManager } from "./ui/PanelManager.js";
+import { ExportPanel } from "./ui/ExportPanel.js";
 import * as THREE from "three";
 
 // ============================================
@@ -72,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "btn-assets",
   );
   const aiCharacterPanel = new AICharacterPanel(editor);
+  const exportPanel = new ExportPanel(editor);
 
   inputHandler.assetsPanel = assetsPanel;
 
@@ -239,7 +241,10 @@ document.addEventListener("DOMContentLoaded", () => {
           alert("Importar - funcionalidad pendiente");
           break;
         case "exportar":
-          alert("Exportar - funcionalidad pendiente");
+          exportPanel.show();
+          break;
+        case "exportarJSON":
+          exportPanel.show();
           break;
         case "addToGroup":
           alert("Add to group - funcionalidad pendiente");
