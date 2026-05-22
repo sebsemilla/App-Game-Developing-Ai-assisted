@@ -116,6 +116,19 @@ export class AICharacterPanel {
   }
 
   handleImageFile(file) {
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const MAX_SIZE_MB = 8;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert("Formato no soportado. Usa JPG, PNG o WebP.");
+      return;
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      alert(`La imagen supera el tamaño máximo de ${MAX_SIZE_MB} MB.`);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = this.panel.querySelector("#image-preview");
@@ -124,6 +137,9 @@ export class AICharacterPanel {
       const placeholder = this.panel.querySelector(".upload-placeholder");
       placeholder.style.display = "none";
       this.currentImageData = e.target.result;
+    };
+    reader.onerror = () => {
+      alert("Error al leer el archivo. Inténtalo de nuevo.");
     };
     reader.readAsDataURL(file);
   }

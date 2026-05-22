@@ -70,10 +70,17 @@ export class AssetsPanel {
     this.assets[category].forEach((asset) => {
       const item = document.createElement("div");
       item.className = "asset-item";
-      item.innerHTML = `
-          <div class="asset-icon">📦</div>
-          <div class="asset-name">${asset.name}</div>
-        `;
+
+      const icon = document.createElement("div");
+      icon.className = "asset-icon";
+      icon.textContent = "📦";
+
+      const label = document.createElement("div");
+      label.className = "asset-name";
+      label.textContent = asset.name; // textContent escapa HTML automáticamente
+
+      item.appendChild(icon);
+      item.appendChild(label);
       // item.innerHTML = `
       //          <img src="${asset.iconUrl}" alt="${asset.name}" onerror="this.src='https://via.placeholder.com/70'">
       //          <div class="asset-name">${asset.name}</div>
