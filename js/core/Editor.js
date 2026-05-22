@@ -9,11 +9,24 @@ export class Editor {
     this.renderer = null;
     this.controls = null;
     this.grid = null;
-    this.selectedObject = null;
     this.selectedObjects = [];
     this.objects = new Map();
     this.history = [];
     this.historyIndex = -1;
+  }
+
+  // selectedObject es siempre el primer elemento de selectedObjects.
+  // Usar este getter/setter evita que ambas variables se desincronicen.
+  get selectedObject() {
+    return this.selectedObjects[0] ?? null;
+  }
+
+  set selectedObject(obj) {
+    if (obj === null) {
+      this.selectedObjects = [];
+    } else if (this.selectedObjects[0] !== obj) {
+      this.selectedObjects = [obj, ...this.selectedObjects.filter((o) => o !== obj)];
+    }
   }
 
   init(containerId) {
@@ -115,14 +128,12 @@ export class Editor {
       }
     });
     this.selectedObjects = [];
-    this.selectedObject = null;
   }
 
   selectObject(obj) {
     if (obj.material && obj.material.emissive) {
       obj.material.emissive.setHex(0x333333);
     }
-    this.selectedObject = obj;
     if (!this.selectedObjects.includes(obj)) {
       this.selectedObjects.push(obj);
     }
@@ -181,7 +192,6 @@ export class Editor {
     this.objects.clear();
     this.history = [];
     this.historyIndex = -1;
-    this.selectedObject = null;
     this.selectedObjects = [];
   }
 }

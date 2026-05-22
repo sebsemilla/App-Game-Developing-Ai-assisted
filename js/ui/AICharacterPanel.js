@@ -161,16 +161,16 @@ export class AICharacterPanel {
           this.previewScene.add(this.previewModel);
           this.applyModifiers();
           this.generatedModel = { url: data.url, name: "AI_Character" };
+          progressMsg.style.display = "none";
+          alert("¡Personaje generado con éxito!");
         },
         undefined,
         (error) => {
           console.error("Error cargando GLB:", error);
+          progressMsg.style.display = "none";
           this.createParametricCharacter();
         },
       );
-
-      progressMsg.style.display = "none";
-      alert("¡Personaje generado con éxito!");
     } catch (error) {
       console.error("Error:", error);
       this.createParametricCharacter();
