@@ -92,6 +92,12 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.submenu-separator {
+    height: 1px;
+    background: rgba(255,255,255,0.12);
+    margin: 4px 10px;
+}
+
 #toolbar {
     position: fixed;
     top: 10px;

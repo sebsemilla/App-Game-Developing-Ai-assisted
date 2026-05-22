@@ -19,6 +19,7 @@ import { PanelManager } from "./ui/PanelManager.js";
 import { ExportPanel } from "./ui/ExportPanel.js";
 import { ReferenceImagePanel } from "./ui/ReferenceImagePanel.js";
 import { VectorImportPanel } from "./ui/VectorImportPanel.js";
+import { MeasurementTool } from "./tools/MeasurementTool.js";
 import * as THREE from "three";
 
 // ============================================
@@ -78,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportPanel = new ExportPanel(editor);
   const referenceImagePanel = new ReferenceImagePanel(editor);
   const vectorImportPanel = new VectorImportPanel(editor);
+  const measurementTool = new MeasurementTool(editor);
 
   inputHandler.assetsPanel = assetsPanel;
 
@@ -256,6 +258,17 @@ document.addEventListener("DOMContentLoaded", () => {
         case "exportarJSON":
           exportPanel.show();
           break;
+        case "medidas": {
+          const isOn = measurementTool.toggle();
+          e.target.textContent = isOn ? "✓ Medidas (activo)" : "Medidas";
+          break;
+        }
+        case "limpiarMedidas":
+          measurementTool.clearAll();
+          break;
+        case "configGrid":
+          gridConfig.toggle();
+          break;
         case "addToGroup":
           alert("Add to group - funcionalidad pendiente");
           break;
@@ -345,6 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
     editor.renderer.render(editor.scene, editor.camera);
     if (lightingPanel) lightingPanel.syncLights();
     if (cameraPanel) cameraPanel.updateIndicator();
+    if (measurementTool.active) measurementTool.updateDimensionOverlay();
   }
   animate();
 
