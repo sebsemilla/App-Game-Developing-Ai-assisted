@@ -19,6 +19,16 @@
    - 5.3 [Validación de inputs](#53-validación-de-inputs)
    - 5.4 [Sanitización de errores](#54-sanitización-de-errores)
    - 5.5 [Validación del parámetro de ruta](#55-validación-del-parámetro-de-ruta)
+6. [Hardening del frontend](#6-hardening-del-frontend)
+   - 6.1 [AssetsPanel — XSS via innerHTML](#61-assetspanel--xss-via-innerhtml)
+   - 6.2 [AICharacterPanel — validación de imagen y FileReader](#62-aicharacterpanel--validación-de-imagen-y-filereader)
+   - 6.3 [ImportPanel — validación de tamaño de archivo](#63-importpanel--validación-de-tamaño-de-archivo)
+5. [Hardening del servidor proxy](#5-hardening-del-servidor-proxy)
+   - 5.1 [CORS restringido](#51-cors-restringido)
+   - 5.2 [Rate Limiting](#52-rate-limiting)
+   - 5.3 [Validación de inputs](#53-validación-de-inputs)
+   - 5.4 [Sanitización de errores](#54-sanitización-de-errores)
+   - 5.5 [Validación del parámetro de ruta](#55-validación-del-parámetro-de-ruta)
 
 ---
 
@@ -664,6 +674,240 @@ Validar inputs lo antes posible y rechazar inmediatamente si son inválidos. No 
 
 ### Feedback sincronizado con la operación real
 El usuario debe ver el resultado cuando la operación terminó de verdad, no cuando empezó a ejecutarse.
+
+---
+
+## 6. Hardening del frontend
+
+El frontend es todo lo que corre en el navegador del usuario: HTML, CSS y JavaScript del lado cliente. Aunque el navegador es un entorno "controlado", hay vectores de ataque y errores silenciosos que pueden afectar la seguridad y la experiencia del usuario.
+
+---
+
+### 6.1 `AssetsPanel` — XSS via innerHTML
+
+#### Archivo
+`js/ui/AssetsPanel.js` — método `renderCategory()`
+
+#### El problema original
+```js
+item.innerHTML = `
+  <div class="asset-icon">📦</div>
+  <div class="asset-name">${asset.name}</div>
+`;
+```
+
+`innerHTML` interpreta el string como **HTML**. Si `asset.name` contiene código HTML o JavaScript, el navegador lo ejecutará.
+
+#### Qué es XSS (Cross-Site Scripting)
+XSS es una vulnerabilidad donde un atacante logra que el navegador ejecute JavaScript no deseado. Ejemplo:
+
+```js
+asset.name = '<img src=x onerror="alert(document.cookie)">';
+// Si esto se inserta via innerHTML, el navegador ejecuta el onerror
+```
+
+En este proyecto, los assets los crea el propio usuario, así que el riesgo inmediato es bajo. Pero si en el futuro los assets pudieran cargarse desde un archivo externo o compartirse entre usuarios, sería un vector real.
+
+#### La corrección
+```js
+const icon = document.createElement("div");
+icon.className = "asset-icon";
+icon.textContent = "📦";
+
+const label = document.createElement("div");
+label.className = "asset-name";
+label.textContent = asset.name; // ← textContent escapa HTML automáticamente
+```
+
+#### `innerHTML` vs `textContent` — la diferencia clave
+
+| Propiedad | Interpreta HTML | Seguro con datos del usuario |
+|---|---|---|
+| `innerHTML` | Sí — puede ejecutar scripts | No |
+| `textContent` | No — trata todo como texto plano | Sí |
+
+```js
+div.innerHTML  = "<b>hola</b>";  // Resultado: texto en negrita
+div.textContent = "<b>hola</b>"; // Resultado: muestra literalmente "<b>hola</b>"
+```
+
+**Regla general:** usa `textContent` cuando insertes datos del usuario o de fuentes externas. Usa `innerHTML` solo con strings literales que controles completamente en el código fuente.
+
+#### `createElement` — construcción segura del DOM
+En lugar de construir HTML como string, se crean nodos del DOM directamente:
+```js
+const div = document.createElement("div"); // Crea un nodo <div>
+div.className = "mi-clase";                // Equivale a class="mi-clase"
+div.textContent = "texto seguro";          // Contenido como texto plano
+parent.appendChild(div);                   // Inserta en el árbol del DOM
+```
+Este enfoque es siempre seguro porque nunca hay parsing de HTML.
+
+---
+
+### 6.2 `AICharacterPanel` — validación de imagen y FileReader
+
+#### Archivo
+`js/ui/AICharacterPanel.js` — método `handleImageFile()`
+
+#### Los dos problemas originales
+
+**Problema 1: sin validación antes de leer**
+```js
+handleImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => { /* ... */ };
+  reader.readAsDataURL(file); // ← lee el archivo sin importar qué sea
+}
+```
+Un usuario podría subir un archivo de 500 MB o un PDF, y el FileReader intentaría leerlo de todas formas, consumiendo memoria del navegador.
+
+**Problema 2: sin `reader.onerror`**
+Si el FileReader falla (archivo corrupto, permisos, disco lleno), la promesa queda sin resolver silenciosamente. El usuario no ve nada y no sabe qué pasó.
+
+#### La corrección completa
+```js
+handleImageFile(file) {
+  // ── Validación de tipo ────────────────────────────────────────────────
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    alert("Formato no soportado. Usa JPG, PNG o WebP.");
+    return; // ← Fail fast: salir antes de hacer cualquier trabajo
+  }
+
+  // ── Validación de tamaño ──────────────────────────────────────────────
+  const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB en bytes
+  if (file.size > MAX_SIZE_BYTES) {
+    alert("La imagen supera el tamaño máximo de 8 MB.");
+    return;
+  }
+
+  // ── Lectura con manejo de error ───────────────────────────────────────
+  const reader = new FileReader();
+  reader.onload = (e) => { /* éxito */ };
+  reader.onerror = () => {
+    alert("Error al leer el archivo. Inténtalo de nuevo.");
+  };
+  reader.readAsDataURL(file);
+}
+```
+
+#### El objeto `File` — propiedades disponibles
+Cuando el usuario selecciona un archivo, el navegador crea un objeto `File` con estas propiedades útiles:
+
+| Propiedad | Tipo | Contenido |
+|---|---|---|
+| `file.name` | string | Nombre del archivo: `"foto.jpg"` |
+| `file.size` | number | Tamaño en bytes: `2097152` (= 2 MB) |
+| `file.type` | string | MIME type: `"image/jpeg"`, `"image/png"`, etc. |
+| `file.lastModified` | number | Timestamp de última modificación |
+
+#### MIME types — qué son
+Un MIME type es un identificador estándar del tipo de contenido. El navegador lo detecta a partir del contenido real del archivo (no solo la extensión):
+
+```
+image/jpeg   → .jpg / .jpeg
+image/png    → .png
+image/webp   → .webp
+model/gltf-binary → .glb
+text/plain   → .txt
+```
+
+Validar `file.type` es más confiable que validar `file.name.split('.').pop()` porque la extensión se puede renombrar fácilmente.
+
+#### `FileReader` — lectura asíncrona de archivos
+```js
+const reader = new FileReader();
+
+reader.onload = (event) => {
+  const resultado = event.target.result;
+  // Para readAsDataURL: "data:image/png;base64,iVBORw0KGgo..."
+  // Para readAsText:    el contenido del archivo como string
+};
+
+reader.onerror = () => {
+  // Se llama si la lectura falla por cualquier razón
+};
+
+reader.readAsDataURL(file);   // Lee como Data URL (base64)
+reader.readAsText(file);      // Lee como texto plano
+reader.readAsArrayBuffer(file); // Lee como buffer binario
+```
+
+`FileReader` es asíncrono: `readAsDataURL()` inicia la lectura y retorna inmediatamente. El callback `onload` se ejecuta cuando la lectura termina.
+
+---
+
+### 6.3 `ImportPanel` — validación de tamaño de archivo
+
+#### Archivo
+`js/ui/ImportPanel.js` — método `loadFile()`
+
+#### El problema original
+```js
+async loadFile() {
+  const file = fileInput.files[0];
+  if (!file) { alert("Selecciona un archivo"); return; }
+
+  const extension = file.name.split(".").pop().toLowerCase();
+  // ← Sin verificar file.size antes de intentar cargar
+  const url = URL.createObjectURL(file);
+  const loaded = await loader.loadAsync(url); // ← puede tardar minutos con archivos enormes
+```
+
+Un modelo 3D de 500 MB freezaría el navegador durante la carga sin ningún aviso al usuario.
+
+#### La corrección
+```js
+const MAX_SIZE_MB = 50;
+if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+  alert(`El archivo supera el tamaño máximo de ${MAX_SIZE_MB} MB.`);
+  return;
+}
+```
+
+Se agrega **antes** de crear el ObjectURL y antes de iniciar la carga, siguiendo el principio de **fail fast**.
+
+#### `URL.createObjectURL()` — qué hace y por qué importa
+```js
+const url = URL.createObjectURL(file);
+// Crea una URL temporal como: "blob:http://localhost:5500/f3a2b1c0-..."
+// Esta URL apunta al archivo en memoria del navegador
+
+const loaded = await loader.loadAsync(url);
+URL.revokeObjectURL(url); // ← IMPORTANTE: liberar la memoria
+```
+
+`createObjectURL` crea una referencia en memoria al archivo. Si no se llama `revokeObjectURL` cuando ya no se necesita, el archivo permanece en memoria aunque el usuario lo haya cerrado — otro tipo de memory leak.
+
+#### Por qué se usa `1024 * 1024` para convertir MB a bytes
+```
+1 kilobyte (KB) = 1024 bytes
+1 megabyte (MB) = 1024 KB = 1024 × 1024 bytes = 1,048,576 bytes
+
+50 MB = 50 × 1024 × 1024 = 52,428,800 bytes
+```
+
+`file.size` siempre está en bytes, por eso hay que convertir el límite.
+
+---
+
+## Conceptos generales aplicados a lo largo del proyecto
+
+### Principio de mínimo privilegio
+Dar a cada parte del sistema solo los permisos que necesita. El servidor antes aceptaba cualquier origen, cualquier input, sin límites — ahora solo lo que está explícitamente permitido.
+
+### Separación de responsabilidades
+Cada módulo hace una sola cosa. Cuando algo falla, sabes exactamente dónde buscar.
+
+### Fail fast
+Validar inputs lo antes posible y rechazar inmediatamente si son inválidos. No esperar hasta el final de la función para detectar que los datos eran malos.
+
+### Feedback sincronizado con la operación real
+El usuario debe ver el resultado cuando la operación terminó de verdad, no cuando empezó a ejecutarse.
+
+### Nunca confíes en el cliente
+Validar tanto en el frontend (para buena experiencia de usuario) como en el backend (para seguridad real). Un atacante puede saltarse cualquier validación del frontend enviando requests directamente al servidor.
 
 ---
 
