@@ -1,0 +1,7 @@
+.env
+node_modules/
+proxy/node_modules/
+proxy/models/
+.vscode/
+*.glb
+.DS_Store

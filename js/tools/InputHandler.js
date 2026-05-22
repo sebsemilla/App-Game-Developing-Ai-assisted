@@ -1,6 +1,9 @@
 // js/tools/InputHandler.js
-import * as THREE from "three";
 import { getIntersectionWithPlane, applySnap } from "../utils/MathUtils.js";
+import { MarqueeSelector } from "./MarqueeSelector.js";
+import { SelectionHandler } from "./SelectionHandler.js";
+import { NodeEditor } from "./NodeEditor.js";
+import { KeyboardShortcuts } from "./KeyboardShortcuts.js";
 
 export class InputHandler {
   constructor(
@@ -11,6 +14,7 @@ export class InputHandler {
     propertiesPanel,
     transformManager,
     assetsPanel,
+    contextMenu,
   ) {
     this.editor = editor;
     this.gridConfig = gridConfig;
@@ -19,9 +23,11 @@ export class InputHandler {
     this.propertiesPanel = propertiesPanel;
     this.transformManager = transformManager;
     this.assetsPanel = assetsPanel;
+    this.contextMenu = contextMenu;
+
     this.editor.renderer.domElement.style.cursor = "default";
 
-    // Estado
+    // Estado base
     this.isDrawing = false;
     this.currentTool = "select";
     this.drawingMode = "2d";
@@ -29,251 +35,59 @@ export class InputHandler {
     this.onToolChange = null;
     this.copiedObject = null;
     this.isDraggingGizmo = false;
+    this.rotationModeActive = false;
 
-    // Modo marquee (selección múltiple)
-    this.marqueeMode = false;
-    this.isMarqueeDragging = false;
-    this.marqueeStart = null;
-    this.marqueeEnd = null;
-    this.marqueeDiv = null;
+    // Sub-módulos
+    this.marquee = new MarqueeSelector(editor, transformManager);
+    this.selection = new SelectionHandler(editor, transformManager, propertiesPanel, assetsPanel);
+    this.nodeEditor = new NodeEditor(editor, transformManager);
+    this.keyboard = new KeyboardShortcuts({
+      editor,
+      gridConfig,
+      transformManager,
+      inputHandler: this,
+    });
 
-    // Escuchar el estado de arrastre del gizmo
-    if (this.transformManager && this.transformManager.controls) {
-      this.transformManager.controls.addEventListener(
-        "dragging-changed",
-        (event) => {
-          this.isDraggingGizmo = event.value;
-        },
-      );
+    // Tooltip de info
+    this._createInfoTooltip();
+
+    // Escuchar gizmo de transformación
+    if (this.transformManager?.controls) {
+      this.transformManager.controls.addEventListener("dragging-changed", (event) => {
+        this.isDraggingGizmo = event.value;
+      });
     }
 
-    // Bind methods
+    // Bind de eventos
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onMouseLeave = this.onMouseLeave.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
-    this.onKeyDown = this.onKeyDown.bind(this);
   }
 
-  setMarqueeMode(active) {
-    this.marqueeMode = active;
-    const marqueeBtn = document.getElementById("btn-marquee");
-    if (marqueeBtn) {
-      if (active) marqueeBtn.classList.add("active");
-      else marqueeBtn.classList.remove("active");
-    }
-  }
+  // ── API pública ───────────────────────────────────────────────────────────
 
-  createMarqueeDiv() {
-    if (this.marqueeDiv) return;
-    this.marqueeDiv = document.createElement("div");
-    this.marqueeDiv.style.position = "fixed";
-    this.marqueeDiv.style.border = "2px dashed #00ff00";
-    this.marqueeDiv.style.backgroundColor = "rgba(0,255,0,0.1)";
-    this.marqueeDiv.style.pointerEvents = "none";
-    this.marqueeDiv.style.zIndex = "10000";
-    document.body.appendChild(this.marqueeDiv);
-  }
-
-  updateMarqueeDiv() {
-    if (!this.marqueeDiv) return;
-    if (!this.isMarqueeDragging || !this.marqueeStart || !this.marqueeEnd) {
-      this.marqueeDiv.style.display = "none";
-      return;
-    }
-    const left = Math.min(this.marqueeStart.x, this.marqueeEnd.x);
-    const top = Math.min(this.marqueeStart.y, this.marqueeEnd.y);
-    const width = Math.abs(this.marqueeEnd.x - this.marqueeStart.x);
-    const height = Math.abs(this.marqueeEnd.y - this.marqueeStart.y);
-    this.marqueeDiv.style.display = "block";
-    this.marqueeDiv.style.left = left + "px";
-    this.marqueeDiv.style.top = top + "px";
-    this.marqueeDiv.style.width = width + "px";
-    this.marqueeDiv.style.height = height + "px";
-  }
-
-  getObjectsInRect(start, end) {
-    const rect = {
-      left: Math.min(start.x, end.x),
-      right: Math.max(start.x, end.x),
-      top: Math.min(start.y, end.y),
-      bottom: Math.max(start.y, end.y),
-    };
-    const objects = this.editor.getAllObjects();
-    const selected = [];
-    const camera = this.editor.camera;
-    const domElement = this.editor.renderer.domElement;
-
-    objects.forEach((obj) => {
-      const bbox = new THREE.Box3().setFromObject(obj);
-      const corners = [
-        new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
-        new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z),
-        new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.min.z),
-        new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.min.z),
-        new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.max.z),
-        new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.max.z),
-        new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.max.z),
-        new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z),
-      ];
-      const screenCorners = corners.map((v) => {
-        const vector = v.clone().project(camera);
-        const x = (vector.x * 0.5 + 0.5) * domElement.clientWidth;
-        const y = -(vector.y * 0.5 - 0.5) * domElement.clientHeight;
-        return { x, y };
-      });
-      const minX = Math.min(...screenCorners.map((p) => p.x));
-      const maxX = Math.max(...screenCorners.map((p) => p.x));
-      const minY = Math.min(...screenCorners.map((p) => p.y));
-      const maxY = Math.max(...screenCorners.map((p) => p.y));
-      if (
-        maxX >= rect.left &&
-        minX <= rect.right &&
-        maxY >= rect.top &&
-        minY <= rect.bottom
-      ) {
-        selected.push(obj);
-      }
-    });
-    return selected;
-  }
-
-  startMarquee(event) {
-    this.isMarqueeDragging = true;
-    this.marqueeStart = { x: event.clientX, y: event.clientY };
-    this.marqueeEnd = this.marqueeStart;
-    this.createMarqueeDiv();
-    this.updateMarqueeDiv();
-    if (this.editor.controls) this.editor.controls.enabled = false;
-    if (this.transformManager) this.transformManager.setEnabled(false);
-  }
-
-  cancelMarquee() {
-    this.isMarqueeDragging = false;
-    this.marqueeStart = null;
-    this.marqueeEnd = null;
-    this.updateMarqueeDiv();
-    if (this.editor.controls) this.editor.controls.enabled = true;
-    if (this.transformManager) this.transformManager.setEnabled(true);
-  }
-
-  finishMarquee(event) {
-    if (!this.marqueeStart || !this.marqueeEnd) return;
-    const objects = this.getObjectsInRect(this.marqueeStart, this.marqueeEnd);
-    const shift = event.shiftKey;
-    const ctrl = event.ctrlKey;
-    let newSelection = [];
-    if (shift) {
-      newSelection = [...(this.editor.selectedObjects || []), ...objects];
-    } else if (ctrl) {
-      const current = this.editor.selectedObjects || [];
-      newSelection = [...current];
-      objects.forEach((obj) => {
-        const index = newSelection.indexOf(obj);
-        if (index === -1) newSelection.push(obj);
-        else newSelection.splice(index, 1);
-      });
-    } else {
-      newSelection = objects;
-    }
-    this.editor.clearSelection();
-    newSelection.forEach((obj) => this.editor.selectObject(obj));
-    this.editor.selectedObjects = newSelection;
-    if (newSelection.length === 1 && this.transformManager) {
-      this.transformManager.attach(newSelection[0]);
-    } else if (newSelection.length > 1 && this.transformManager) {
-      this.transformManager.detach();
-    }
-    this.cancelMarquee();
-    if (this.propertiesPanel) {
-      this.propertiesPanel.updateForObject(
-        newSelection.length === 1 ? newSelection[0] : null,
-      );
-    }
-  }
-
-  isClickOnGizmo(event) {
-    if (!this.transformManager || !this.transformManager.controls) return false;
-    const rect = this.editor.renderer.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, this.editor.camera);
-    const gizmoGroup = this.transformManager.controls._gizmo;
-    if (!gizmoGroup) return false;
-    const gizmoMeshes = [];
-    gizmoGroup.children.forEach((child) => {
-      if (child.isMesh) gizmoMeshes.push(child);
-    });
-    const intersects = raycaster.intersectObjects(gizmoMeshes);
-    return intersects.length > 0;
-  }
+  get selectionMode() { return this.selection.selectionMode; }
+  get marqueeMode() { return this.marquee.marqueeMode; }
 
   setTool(tool, mode) {
     this.currentTool = tool;
     this.drawingMode = mode;
     this.previewManager.setTool(tool, mode);
-
-    const canvas = this.editor.renderer.domElement;
-    if (tool === "select") {
-      canvas.style.cursor = "default";
-    } else {
-      canvas.style.cursor = "crosshair";
-    }
-
-    if (this.onToolChange) {
-      this.onToolChange(tool, mode);
-    }
-
+    this.editor.renderer.domElement.style.cursor = tool === "select" ? "default" : "crosshair";
+    if (this.onToolChange) this.onToolChange(tool, mode);
     console.log(`🔧 Tool changed: ${tool}, mode: ${mode}`);
   }
 
-  onKeyDown(event) {
-    const target = event.target;
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable
-    ) {
-      return;
-    }
-    const key = event.key.toLowerCase();
-    const ctrl = event.ctrlKey;
+  setMarqueeMode(active) {
+    this.marquee.setMode(active);
+  }
 
-    if (key === "s") {
-      event.preventDefault();
-      this.setTool("select", this.drawingMode);
-      if (this.transformManager) this.transformManager.setMode("translate");
-    } else if (key === "t") {
-      event.preventDefault();
-      if (this.editor.selectedObject && this.transformManager) {
-        this.transformManager.setMode("scale");
-      }
-    } else if (ctrl && key === "z") {
-      event.preventDefault();
-      this.editor.undo();
-    } else if (ctrl && key === "y") {
-      event.preventDefault();
-      this.editor.redo();
-    } else if (key === "delete") {
-      event.preventDefault();
-      this.handleDelete();
-    } else if (ctrl && key === "c") {
-      event.preventDefault();
-      this.handleCopy();
-    } else if (ctrl && key === "v") {
-      event.preventDefault();
-      this.handlePaste();
-    } else if (key === "g") {
-      event.preventDefault();
-      if (this.gridConfig) {
-        this.gridConfig.snapEnabled = !this.gridConfig.snapEnabled;
-        const lockCheckbox = document.querySelector("#grid-lock");
-        if (lockCheckbox) lockCheckbox.checked = this.gridConfig.snapEnabled;
-      }
-    }
+  setSelectionMode(mode) {
+    this.selection.setMode(mode);
+    this.marquee.setMode(mode === "marquee");
+    console.log(`Modo de selección cambiado a: ${mode}`);
   }
 
   setupEventListeners() {
@@ -283,7 +97,7 @@ export class InputHandler {
     canvas.addEventListener("mouseup", this.onMouseUp);
     canvas.addEventListener("mouseleave", this.onMouseLeave);
     canvas.addEventListener("contextmenu", this.onContextMenu);
-    window.addEventListener("keydown", this.onKeyDown);
+    this.keyboard.attach();
   }
 
   removeEventListeners() {
@@ -293,182 +107,217 @@ export class InputHandler {
     canvas.removeEventListener("mouseup", this.onMouseUp);
     canvas.removeEventListener("mouseleave", this.onMouseLeave);
     canvas.removeEventListener("contextmenu", this.onContextMenu);
-    window.removeEventListener("keydown", this.onKeyDown);
+    this.keyboard.detach();
+  }
+
+  // ── Handlers de eventos del canvas ───────────────────────────────────────
+
+  onContextMenu(event) {
+    event.preventDefault();
+    if (this.editor.selectedObjects?.length > 0) {
+      this.contextMenu?.show?.(event, this.editor.selectedObjects);
+    }
   }
 
   onMouseDown(event) {
-    if (
-      this.marqueeMode &&
-      this.currentTool === "select" &&
-      event.button === 0
-    ) {
-      const rect = this.editor.renderer.domElement.getBoundingClientRect();
-      const mouse = new THREE.Vector2();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(mouse, this.editor.camera);
-      const intersects = raycaster.intersectObjects(
-        this.editor.getAllObjects(),
-      );
-      if (intersects.length === 0) {
-        this.startMarquee(event);
+    if (this.rotationModeActive) return;
+    if (this.currentTool !== "select") event.preventDefault();
+    if (event.button === 2) return;
+
+    if (this.currentTool === "select") {
+      // Comprobar nodo 2D
+      const intersects = this.selection.getObjectsAtPoint(event);
+      const nodeHit = intersects.find((i) => i.object.userData?.isNode === true);
+      if (nodeHit) {
+        const node = nodeHit.object;
+        const parentGroup = node.userData.parentGroup;
+        const shapeType = parentGroup.userData.type;
+        if (shapeType === "rect2d" || shapeType === "line") {
+          this.nodeEditor.selectNode(node);
+          this.nodeEditor.startDrag(event);
+          event.stopPropagation();
+          return;
+        } else {
+          this.editor.clearSelection();
+          this.editor.selectObject(parentGroup);
+          this.editor.selectedObjects = [parentGroup];
+          this.propertiesPanel.updateForObject(parentGroup);
+          if (this.transformManager) this.transformManager.attach(parentGroup);
+          return;
+        }
+      }
+
+      // Face / Edge selection modes
+      if (this.selectionMode === "face") {
+        this.selection.selectFace(event);
         return;
       }
-    }
-    if (this.currentTool === "select") {
+      if (this.selectionMode === "edge") {
+        this.selection.selectEdge(event);
+        return;
+      }
+
+      // Marquee: iniciar si no hay objeto bajo el cursor
+      if (this.marquee.marqueeMode && event.button === 0) {
+        const hits = this.selection.getObjectsAtPoint(event);
+        if (hits.length === 0) {
+          this.marquee.start(event);
+          return;
+        }
+      }
+
+      // Selección normal
       if (this.isDraggingGizmo) return;
-      const rect = this.editor.renderer.domElement.getBoundingClientRect();
-      const mouse = new THREE.Vector2();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(mouse, this.editor.camera);
-      const intersects = raycaster.intersectObjects(
-        this.editor.getAllObjects(),
-      );
-      if (intersects.length > 0) {
-        const object = intersects[0].object;
-        this.editor.clearSelection();
-        this.editor.selectObject(object);
-        this.editor.selectedObjects = [object];
-        this.propertiesPanel.updateForObject(object);
-        if (this.transformManager) this.transformManager.attach(object);
-        if (this.assetsPanel) this.assetsPanel.setCurrentObject(object);
-      } else {
-        this.editor.clearSelection();
-        this.propertiesPanel.updateForObject(null);
-        if (this.transformManager) this.transformManager.detach();
+      this.selection.handleClick(event);
+      // Limpiar nodo si no se hizo click en nada
+      if (!this.editor.selectedObjects.length) {
+        this.nodeEditor.deselectNode();
       }
       return;
     }
-    if (event.button === 0) {
-      this.startDrawing(event);
-    }
-  }
 
-  startDrawing(event) {
-    if (this.isDrawing || this.previewManager.hasPreview()) {
-      this.resetDrawingState();
-    }
-    const point = getIntersectionWithPlane(
-      event,
-      this.editor.camera,
-      this.editor.renderer.domElement,
-    );
-    if (!point) return;
-    let snappedPoint;
-    if (this.gridConfig.snapEnabled) {
-      snappedPoint = this.gridConfig.snapToGrid(point);
-    } else {
-      snappedPoint = point.clone();
-    }
-    this.startPoint = snappedPoint.clone();
-    this.isDrawing = true;
-    this.editor.controls.enabled = false;
-    const color = this.ui.getColor();
-    if (this.drawingMode === "2d") {
-      this.previewManager.create2DPreview(snappedPoint, color);
-    } else {
-      this.previewManager.create3DPreview(snappedPoint, color);
-    }
+    // Herramientas de dibujo
+    if (event.button === 0) this._startDrawing(event);
   }
 
   onMouseMove(event) {
-    if (this.isMarqueeDragging) {
-      this.marqueeEnd = { x: event.clientX, y: event.clientY };
-      this.updateMarqueeDiv();
+    if (this.marquee.isMarqueeDragging) {
+      this.marquee.update(event);
       return;
     }
+    if (this.nodeEditor.nodeDragging) {
+      this.nodeEditor.updateDrag(event);
+      return;
+    }
+    // Tooltip de selección múltiple
+    if (!this.isDrawing && this.currentTool === "select") {
+      const hits = this.selection.getObjectsAtPoint(event);
+      if (hits.length > 0 && this.editor.selectedObjects?.length > 1 && this.editor.selectedObjects.includes(hits[0].object)) {
+        this._showInfoTooltip(event.clientX, event.clientY);
+      } else {
+        this._hideInfoTooltip();
+      }
+    }
     if (!this.isDrawing || !this.startPoint) return;
-    const point = getIntersectionWithPlane(
-      event,
-      this.editor.camera,
-      this.editor.renderer.domElement,
-    );
+    event.preventDefault();
+    const point = getIntersectionWithPlane(event, this.editor.camera, this.editor.renderer.domElement);
     const snappedPoint = applySnap(point, this.gridConfig);
-    this.previewManager.updatePreview(snappedPoint);
+    if (snappedPoint) this.previewManager.updatePreview(snappedPoint);
   }
 
   onMouseUp(event) {
-    if (this.isMarqueeDragging) {
-      this.finishMarquee(event);
+    if (this.rotationModeActive) return;
+    if (this.nodeEditor.nodeDragging) {
+      this.nodeEditor.endDrag();
+      return;
+    }
+    if (this.marquee.isMarqueeDragging) {
+      this.marquee.finish(event, this.propertiesPanel);
       return;
     }
     if (this.isDrawing && event.button === 0) {
-      const point = getIntersectionWithPlane(
-        event,
-        this.editor.camera,
-        this.editor.renderer.domElement,
-      );
+      const point = getIntersectionWithPlane(event, this.editor.camera, this.editor.renderer.domElement);
       if (point && this.startPoint) {
-        const snappedPoint = this.gridConfig.snapEnabled
-          ? this.gridConfig.snapToGrid(point)
-          : point.clone();
-        const original = this.previewManager.finishDrawing(
-          snappedPoint,
-          this.drawingMode,
-          this.currentTool,
-          this.ui.getColor(),
-        );
-        if (original && this.propertiesPanel.mirrorEnabled) {
-          this.createMirrorCopy(original);
+        const snappedPoint = applySnap(point, this.gridConfig);
+        const created = this.previewManager.finishDrawing(snappedPoint, this.drawingMode, this.currentTool, this.ui.getColor());
+        if (created) {
+          this.editor.clearSelection();
+          this.editor.selectObject(created);
+          this.editor.selectedObjects = [created];
+          this.propertiesPanel.updateForObject(created);
+          if (this.transformManager) this.transformManager.attach(created);
+          if (this.propertiesPanel.mirrorEnabled) this._createMirrorCopy(created);
         }
+        this.setTool("select", this.drawingMode);
       }
-      this.resetDrawingState();
+      this.editor.saveState?.();
+      this._resetDrawingState();
       if (this.assetsPanel) this.assetsPanel.setCurrentObject(null);
     }
   }
 
   onMouseLeave() {
-    if (this.isMarqueeDragging) {
-      this.cancelMarquee();
+    if (this.rotationModeActive) {
+      this.rotationModeActive = false;
+      this.transformManager?.setEnabled(true);
+      if (this.editor.controls) this.editor.controls.enabled = true;
     }
-    if (this.isDrawing || this.previewManager.hasPreview()) {
-      this.resetDrawingState();
-    }
+    if (this.marquee.isMarqueeDragging) this.marquee.cancel();
+    if (this.isDrawing || this.previewManager.hasPreview()) this._resetDrawingState();
+    if (this.nodeEditor.nodeDragging) this.nodeEditor.endDrag();
+    if (this.nodeEditor.selectedNode) this.nodeEditor.deselectNode();
+    this._hideInfoTooltip();
+    this.selection.clearAll();
   }
 
-  onContextMenu(event) {
-    event.preventDefault();
-  }
-
-  resetDrawingState() {
-    this.isDrawing = false;
-    this.startPoint = null;
-    this.previewManager.cleanup();
-    this.editor.controls.enabled = true;
-  }
+  // ── Acciones de edición (usadas por KeyboardShortcuts) ────────────────────
 
   handleDelete() {
     if (this.editor.selectedObject) {
+      this.editor.saveState?.();
       this.editor.removeObject(this.editor.selectedObject);
       this.editor.selectedObject = null;
       this.editor.selectedObjects = [];
       this.propertiesPanel.updateForObject(null);
-      if (this.transformManager) this.transformManager.detach();
+      this.transformManager?.detach();
     }
   }
 
   handleCopy() {
-    if (this.editor.selectedObject) {
-      this.copiedObject = this.editor.selectedObject.clone();
-    }
+    if (this.editor.selectedObject) this.copiedObject = this.editor.selectedObject.clone();
   }
 
   handlePaste() {
     if (!this.copiedObject) return;
     const clone = this.copiedObject.clone();
     clone.position.x += 2;
+    this.editor.saveState?.();
     this.editor.addObject(clone);
     this.editor.clearSelection();
     this.editor.selectObject(clone);
     this.editor.selectedObjects = [clone];
     this.propertiesPanel.updateForObject(clone);
-    if (this.transformManager) this.transformManager.attach(clone);
+    this.transformManager?.attach(clone);
   }
 
-  createMirrorCopy(original) {
+  // ── Privados ──────────────────────────────────────────────────────────────
+
+  _startDrawing(event) {
+    if (this.isDrawing || this.previewManager.hasPreview()) this._resetDrawingState();
+    const point = getIntersectionWithPlane(event, this.editor.camera, this.editor.renderer.domElement);
+    if (!point) return;
+    const snappedPoint = applySnap(point, this.gridConfig);
+    this.startPoint = snappedPoint.clone();
+    this.isDrawing = true;
+    this.editor.controls.enabled = false;
+    const color = this.ui.getColor();
+    if (this.drawingMode === "2d") {
+      switch (this.currentTool) {
+        case "rect2d": this.previewManager.create2DPreview(snappedPoint, color); break;
+        case "circle2d": this.previewManager.createCirclePreview(snappedPoint, color); break;
+        case "line": this.previewManager.createLinePreview(snappedPoint, color); break;
+        case "freehand": this.previewManager.createFreehandPreview(snappedPoint, color); break;
+        default: console.warn(`Herramienta 2D ${this.currentTool} no implementada`);
+      }
+    } else {
+      switch (this.currentTool) {
+        case "cube": this.previewManager.create3DPreview(snappedPoint, color); break;
+        case "sphere": this.previewManager.createSpherePreview(snappedPoint, color); break;
+        case "cylinder": this.previewManager.createCylinderPreview(snappedPoint, color); break;
+        default: console.warn(`Herramienta 3D ${this.currentTool} no implementada`);
+      }
+    }
+  }
+
+  _resetDrawingState() {
+    this.isDrawing = false;
+    this.startPoint = null;
+    this.previewManager.cleanup();
+    this.editor.controls.enabled = true;
+    this.selection.clearAll();
+  }
+
+  _createMirrorCopy(original) {
     const clone = original.clone();
     const axis = this.propertiesPanel.mirrorAxis;
     if (axis === "x") clone.position.x = -clone.position.x;
@@ -478,8 +327,39 @@ export class InputHandler {
       clone.position.x = -clone.position.x;
       clone.position.z = -clone.position.z;
     }
+    this.editor.saveState?.();
     this.editor.scene.add(clone);
     this.editor.addObject(clone);
     clone.userData.mirrored = true;
+  }
+
+  _createInfoTooltip() {
+    this.infoTooltip = document.createElement("div");
+    this.infoTooltip.className = "info-tooltip";
+    Object.assign(this.infoTooltip.style, {
+      position: "fixed",
+      background: "rgba(0,0,0,0.7)",
+      color: "white",
+      padding: "5px 10px",
+      borderRadius: "8px",
+      fontSize: "12px",
+      pointerEvents: "none",
+      zIndex: "10000",
+      display: "none",
+      whiteSpace: "nowrap",
+    });
+    this.infoTooltip.innerHTML = 'Press "S" to move with keyboard<br>Use arrow keys to move<br>Press Shift+R to rotate';
+    document.body.appendChild(this.infoTooltip);
+  }
+
+  _showInfoTooltip(x, y) {
+    if (!this.infoTooltip) return;
+    this.infoTooltip.style.display = "block";
+    this.infoTooltip.style.left = x + 15 + "px";
+    this.infoTooltip.style.top = y - 20 + "px";
+  }
+
+  _hideInfoTooltip() {
+    if (this.infoTooltip) this.infoTooltip.style.display = "none";
   }
 }
